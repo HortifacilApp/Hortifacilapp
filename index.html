@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f4f3a"><link rel="manifest" href="manifest.json">
+<title>Hortifrúti Controle</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f4f6f3;color:#243126}
+header{background:#2f4f3a;color:#fff;padding:18px 16px 14px;position:sticky;top:0;z-index:5}
+h1{font-size:21px;margin:0 0 4px}.sub{font-size:12px;opacity:.85}
+nav{display:flex;gap:6px;overflow:auto;background:#fff;padding:8px;border-bottom:1px solid #ddd;position:sticky;top:76px;z-index:4}
+nav button{border:0;background:#eef2ed;border-radius:10px;padding:9px 11px;white-space:nowrap;font-weight:600;color:#34503b}nav button.active{background:#2f4f3a;color:#fff}
+main{padding:14px;max-width:900px;margin:auto}.screen{display:none}.screen.active{display:block}
+.card{background:#fff;border:1px solid #e1e5e1;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px #0000000b}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+button.primary,.btn{border:0;border-radius:10px;padding:12px 14px;font-weight:700;background:#2f4f3a;color:#fff}.btn.light{background:#eaf0e8;color:#2f4f3a}.btn.danger{background:#a33b35}.btn.small{padding:8px 10px;font-size:12px}
+input,select{width:100%;padding:11px;border:1px solid #ccd3cc;border-radius:9px;background:#fff;font-size:15px;margin-top:5px}
+label{font-size:12px;font-weight:700;color:#526056}.row{display:flex;gap:8px;align-items:end}.row>*{flex:1}
+h2{font-size:17px;margin:4px 0 12px}.muted{color:#6c766e;font-size:12px}
+.kpi{background:#eef5eb;border-radius:12px;padding:12px}.kpi b{display:block;font-size:19px;margin-top:4px}
+.list{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}.list:last-child{border-bottom:0}
+.actions{display:flex;gap:6px;flex-wrap:wrap}.empty{padding:22px;text-align:center;color:#777}
+@media(max-width:500px){.grid3{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr 1fr}}
+</style></head>
+<body>
+<header><h1>🥕 Hortifrúti Controle</h1><div class="sub">Vendas • Clientes • Produtos • Preços • Estoque — funciona offline</div></header>
+<nav id="nav">
+<button data-s="inicio">Início</button><button data-s="venda">Nova venda</button><button data-s="vendas">Vendas</button><button data-s="clientes">Clientes</button><button data-s="produtos">Produtos</button><button data-s="estoque">Estoque</button><button data-s="fiado">Fiado</button>
+</nav>
+<main>
+<section id="inicio" class="screen"><div class="card"><button class="primary" onclick="printReport('fechamento')">🖨️ Imprimir fechamento do dia</button></div>
+<div class="grid">
+<div class="kpi">Vendas hoje<b id="kVenda">R$ 0,00</b></div><div class="kpi">A receber<b id="kFiado">R$ 0,00</b></div>
+<div class="kpi">Produtos<b id="kProd">0</b></div><div class="kpi">Estoque baixo<b id="kBaixo">0</b></div>
+</div>
+<div class="card"><h2>Atalhos</h2><div class="grid">
+<button class="primary" onclick="show('venda')">➕ Nova venda</button><button class="btn light" onclick="show('produtos')">🥕 Produtos</button>
+<button class="btn light" onclick="show('clientes')">👤 Clientes</button><button class="btn light" onclick="show('estoque')">📦 Estoque</button>
+</div></div>
+<div class="card"><h2>Fechamento de hoje</h2><div id="fechamento"></div></div>
+</section>
+
+<section id="venda" class="screen">
+<div class="card"><h2>Nova venda</h2>
+<label>Cliente<select id="vCliente"><option value="">Consumidor</option></select></label><br>
+<label>Produto<select id="vProduto"></select></label><br>
+<div class="row"><div><label>Quantidade<input id="vQtd" type="number" step="0.01" value="1"></label></div><div><label>Preço unitário<input id="vPreco" type="number" step="0.01"></label></div></div><br>
+<label>Pagamento<select id="vPag"><option>Dinheiro</option><option>Pix</option><option>Cartão</option><option>Fiado</option></select></label><br>
+<button class="primary" onclick="addVenda()">Registrar venda</button>
+</div>
+<div class="card"><h2>Itens da venda</h2><div id="carrinho"></div><div class="row"><b>Total:</b><b id="vTotal">R$ 0,00</b></div></div>
+</section>
+
+<section id="vendas" class="screen"><div class="card"><h2>Vendas</h2><button class="btn light" onclick="printReport('vendas')">🖨️ Imprimir vendas</button><div class="row"><input id="buscaVenda" placeholder="Buscar cliente/produto" oninput="render()"><button class="btn light" onclick="window.print()">🖨️</button></div><div id="listaVendas"></div></div></section>
+
+<section id="clientes" class="screen"><div class="card"><h2>Cadastro de clientes</h2>
+<div class="row"><input id="cNome" placeholder="Nome"><input id="cTel" placeholder="Telefone"></div><br>
+<input id="cObs" placeholder="Observação"><br><br><button class="primary" onclick="addCliente()">Salvar cliente</button></div>
+<div class="card"><div id="listaClientes"></div></div></section>
+
+<section id="produtos" class="screen"><div class="card"><h2>Cadastro de produtos e preços</h2>
+<div class="row"><input id="pNome" placeholder="Produto"><input id="pUn" placeholder="Unidade (cx, kg, un)"></div><br>
+<div class="row"><input id="pPreco" type="number" step="0.01" placeholder="Preço de venda"><input id="pMin" type="number" step="0.01" placeholder="Estoque mínimo"></div><br>
+<button class="primary" onclick="addProduto()">Salvar produto</button></div>
+<div class="card"><div id="listaProdutos"></div></div></section>
+
+<section id="estoque" class="screen"><div class="card"><h2>Estoque</h2><button class="btn light" onclick="printReport('estoque')">🖨️ Imprimir estoque</button><div id="listaEstoque"></div></div></section>
+
+<section id="fiado" class="screen"><div class="card"><h2>Contas a receber</h2><button class="btn light" onclick="printReport('fiado')">🖨️ Imprimir fiado</button><div id="listaFiado"></div></div></section>
+</main>
+<script>
+const KEY='hortifruti_v2';
+let db=JSON.parse(localStorage.getItem(KEY)||'{"clientes":[],"produtos":[],"vendas":[],"fiado":[]}');
+const money=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v)||0);
+const save=()=>{localStorage.setItem(KEY,JSON.stringify(db));render()};
+function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.s===id));render()}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.s));
+function addCliente(){let n=cNome.value.trim();if(!n)return alert('Informe o nome.');db.clientes.push({id:Date.now(),nome:n,tel:cTel.value,obs:cObs.value});cNome.value=cTel.value=cObs.value='';save()}
+function addProduto(){let n=pNome.value.trim();if(!n)return alert('Informe o produto.');db.produtos.push({id:Date.now(),nome:n,un:pUn.value||'un',preco:+pPreco.value||0,min:+pMin.value||0,estoque:0});pNome.value=pUn.value=pPreco.value=pMin.value='';save()}
+function addVenda(){let pid=+vProduto.value,q=+vQtd.value||0,pre=+vPreco.value||0;if(!pid||q<=0)return alert('Escolha produto e quantidade.');let p=db.produtos.find(x=>x.id===pid);if((p.estoque||0)<q)return alert('Estoque insuficiente.');let venda={id:Date.now(),data:new Date().toISOString(),cliente:vCliente.options[vCliente.selectedIndex]?.text||'Consumidor',produto:p.nome,qtd:q,preco:pre,total:q*pre,pag:vPag.value};db.vendas.push(venda);p.estoque=(p.estoque||0)-q;if(venda.pag==='Fiado')db.fiado.push({id:venda.id,cliente:venda.cliente,valor:venda.total,data:venda.data,pago:false});alert('Venda registrada!');save();show('vendas')}
+function render(){
+vCliente.innerHTML='<option value="">Consumidor</option>'+db.clientes.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+vProduto.innerHTML=db.produtos.map(p=>`<option value="${p.id}">${esc(p.nome)} — ${money(p.preco)}/${esc(p.un)}</option>`).join('');
+if(db.produtos.length){let p=db.produtos.find(x=>x.id==+vProduto.value)||db.produtos[0];vProduto.value=p.id;vPreco.value=p.preco}else vPreco.value='';
+const hoje=new Date().toDateString(), vendasHoje=db.vendas.filter(v=>new Date(v.data).toDateString()===hoje);
+kVenda.textContent=money(vendasHoje.reduce((s,v)=>s+v.total,0));kFiado.textContent=money(db.fiado.filter(f=>!f.pago).reduce((s,f)=>s+f.valor,0));kProd.textContent=db.produtos.length;kBaixo.textContent=db.produtos.filter(p=>(p.estoque||0)<=p.min).length;
+fechamento.innerHTML=['Dinheiro','Pix','Cartão','Fiado'].map(pg=>`<div class="list"><span>${pg}</span><b>${money(vendasHoje.filter(v=>v.pag===pg).reduce((s,v)=>s+v.total,0))}</b></div>`).join('');
+let q=(buscaVenda?.value||'').toLowerCase();listaVendas.innerHTML=(db.vendas.slice().reverse().filter(v=>(v.cliente+' '+v.produto).toLowerCase().includes(q)).map(v=>`<div class="list"><div><b>${esc(v.produto)}</b><div class="muted">${new Date(v.data).toLocaleString('pt-BR')} • ${esc(v.cliente)} • ${esc(v.pag)}</div></div><b>${money(v.total)}</b></div>`).join('')||'<div class="empty">Nenhuma venda encontrada.</div>');
+listaClientes.innerHTML=db.clientes.map(c=>`<div class="list"><div><b>${esc(c.nome)}</b><div class="muted">${esc(c.tel||'')} ${esc(c.obs||'')}</div></div><button class="btn danger small" onclick="delCliente(${c.id})">Excluir</button></div>`).join('')||'<div class="empty">Nenhum cliente cadastrado.</div>';
+listaProdutos.innerHTML=db.produtos.map(p=>`<div class="list"><div><b>${esc(p.nome)}</b><div class="muted">${money(p.preco)} / ${esc(p.un)} • estoque: ${p.estoque||0} • mínimo: ${p.min||0}</div></div><div class="actions"><button class="btn small" onclick="entrada(${p.id})">+ Estoque</button><button class="btn danger small" onclick="delProduto(${p.id})">Excluir</button></div></div>`).join('')||'<div class="empty">Nenhum produto cadastrado.</div>';
+listaEstoque.innerHTML=db.produtos.map(p=>`<div class="list"><div><b>${esc(p.nome)}</b><div class="muted">Mínimo: ${p.min||0} ${esc(p.un)}</div></div><b>${p.estoque||0} ${esc(p.un)}</b></div>`).join('')||'<div class="empty">Cadastre produtos para controlar o estoque.</div>';
+listaFiado.innerHTML=db.fiado.filter(f=>!f.pago).map(f=>`<div class="list"><div><b>${esc(f.cliente)}</b><div class="muted">${new Date(f.data).toLocaleDateString('pt-BR')}</div></div><div><b>${money(f.valor)}</b><br><button class="btn small" onclick="pagar(${f.id})">Marcar pago</button></div></div>`).join('')||'<div class="empty">Nenhuma conta pendente.</div>';
+}
+function entrada(id){let p=db.produtos.find(x=>x.id===id),q=prompt(`Entrada de estoque para ${p.nome}:`);if(q!==null&&+q>0){p.estoque=(p.estoque||0)+(+q);save()}}
+function pagar(id){let f=db.fiado.find(x=>x.id===id);if(f){f.pago=true;f.pagamento=new Date().toISOString();save()}}
+function delCliente(id){if(confirm('Excluir cliente?')){db.clientes=db.clientes.filter(x=>x.id!==id);save()}}
+function delProduto(id){if(confirm('Excluir produto?')){db.produtos=db.produtos.filter(x=>x.id!==id);save()}}
+
+function printReport(tipo){
+  let title='', body='';
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  if(tipo==='vendas'){
+    title='HortiFácil — Vendas';
+    const arr=db.vendas.slice().reverse();
+    body='<table><tr><th>Data</th><th>Cliente</th><th>Produto</th><th>Qtd.</th><th>Pagamento</th><th>Total</th></tr>'+
+      arr.map(v=>`<tr><td>${new Date(v.data).toLocaleDateString('pt-BR')}</td><td>${esc(v.cliente)}</td><td>${esc(v.produto)}</td><td>${v.qtd}</td><td>${esc(v.pag)}</td><td>${money(v.total)}</td></tr>`).join('')+'</table>';
+  } else if(tipo==='fiado'){
+    title='HortiFácil — Contas a Receber';
+    const arr=db.fiado.filter(f=>!f.pago);
+    body='<table><tr><th>Cliente</th><th>Data</th><th>Valor</th><th>Status</th></tr>'+
+      arr.map(f=>`<tr><td>${esc(f.cliente)}</td><td>${new Date(f.data).toLocaleDateString('pt-BR')}</td><td>${money(f.valor)}</td><td>Pendente</td></tr>`).join('')+
+      `</table><h3>Total a receber: ${money(arr.reduce((s,f)=>s+f.valor,0))}</h3>`;
+  } else if(tipo==='estoque'){
+    title='HortiFácil — Estoque';
+    body='<table><tr><th>Produto</th><th>Unidade</th><th>Estoque</th><th>Mínimo</th><th>Preço</th></tr>'+
+      db.produtos.map(p=>`<tr><td>${esc(p.nome)}</td><td>${esc(p.un)}</td><td>${p.estoque||0}</td><td>${p.min||0}</td><td>${money(p.preco)}</td></tr>`).join('')+'</table>';
+  } else {
+    title='HortiFácil — Fechamento do Dia';
+    const arr=db.vendas.filter(v=>new Date(v.data).toDateString()===new Date().toDateString());
+    body=`<h3>Data: ${hoje}</h3><table><tr><th>Forma de pagamento</th><th>Total</th></tr>`+
+      ['Dinheiro','Pix','Cartão','Fiado'].map(pg=>`<tr><td>${pg}</td><td>${money(arr.filter(v=>v.pag===pg).reduce((s,v)=>s+v.total,0))}</td></tr>`).join('')+
+      `</table><h3>Total vendido: ${money(arr.reduce((s,v)=>s+v.total,0))}</h3>`;
+  }
+  const w=window.open('','_blank');
+  if(!w){alert('Permita pop-ups para imprimir.');return}
+  w.document.write(`<html><head><title>${title}</title><style>body{font-family:Arial;padding:24px}h1{color:#2f4f3a}table{width:100%;border-collapse:collapse;margin-top:15px}th,td{border:1px solid #bbb;padding:7px;text-align:left}th{background:#eaf2e8}@media print{button{display:none}}</style></head><body><h1>${title}</h1>${body}<p>Gerado pelo HortiFácil em ${hoje}</p><button onclick="window.print()">Imprimir</button></body></html>`);
+  w.document.close();
+}
+
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+vProduto.onchange=()=>{let p=db.produtos.find(x=>x.id==+vProduto.value);if(p)vPreco.value=p.preco};
+show('inicio');
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
